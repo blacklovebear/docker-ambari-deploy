@@ -137,12 +137,15 @@ amb-start-ambari-server() {
               -h $AMBARI_SERVER_NAME.service.consul $ambari_server_image 
 
   set-host-ip $AMBARI_SERVER_NAME $local_ip
-  local ambari_server_ip=$(get-ambari-server-ip)
-  # publish ambari 8080 port
-  amb-publish-port 8080 $ambari_server_ip
 
-  run-command consul-register-service $AMBARI_SERVER_NAME $ambari_server_ip
-  run-command consul-register-service ambari-8080 $ambari_server_ip
+  # publish ambari 8080 port
+  amb-publish-port 8080 $local_ip
+
+  # for etl server or kattle to copy file
+  run-command docker exec $AMBARI_SERVER_NAME sh -c " echo Zasd_1234 | passwd root --stdin "
+
+  run-command consul-register-service $AMBARI_SERVER_NAME $local_ip
+  run-command consul-register-service ambari-8080 $local_ip
 }
 
 amb-start-mysql() {
@@ -151,7 +154,9 @@ amb-start-mysql() {
               -e MYSQL_ROOT_PASSWORD=$MYSQL_PASSWD -d registry.cn-hangzhou.aliyuncs.com/tospur/mysql
 
   set-host-ip $MYSQL_SERVER_NAME $local_ip
-  run-command consul-register-service $MYSQL_SERVER_NAME $(get-host-ip $MYSQL_SERVER_NAME)
+
+  amb-publish-port 3306 $local_ip
+  run-command consul-register-service $MYSQL_SERVER_NAME $local_ip
 }
 
 amb-start-server() {
@@ -194,7 +199,7 @@ amb-start-node() {
               -h ${node_name}.service.consul $ambari_agent_image
 
   set-host-ip $node_name $local_ip
-  run-command consul-register-service $node_name $(get-host-ip $node_name)
+  run-command consul-register-service $node_name $local_ip
 
   _amb-start-node-service $node_name
 }
@@ -493,17 +498,21 @@ amb-publish-hadoop-port(){
   pdsh -w $locate_host bash $SH_FILE_PATH/$0 amb-publish-port $port ${amb_stay_host_ip}
 }
 
-amb-publish-hadoop-ports() {
+
+amb-publish-ambari-server-ports(){
   local first_host=$(_get-first-host)
   _copy_this_sh
 
   # clean all port dnat
-  pdsh -w $HOST_LIST firewall-cmd --reload
+  pdsh -w $first_host firewall-cmd --reload
 
   # republish ambari 8080 port
-  local ambari_server_ip=$(get-ambari-server-ip)
-  amb-publish-port 8080 $ambari_server_ip
+  local mysql_ip=$(get-host-ip $MYSQL_SERVER_NAME)
+  amb-publish-port 8080 $(get-ambari-server-ip)
+  amb-publish-port 3306 $mysql_ip
+}
 
+amb-publish-hadoop-ports() {
   # hive jdbc port 10000
   amb-publish-hadoop-port 10000
 }
