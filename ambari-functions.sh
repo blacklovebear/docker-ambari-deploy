@@ -109,6 +109,7 @@ amb-publish-port() {
   else
     iptables -A PREROUTING -t nat -i eth0 -p tcp --dport $host_port -j DNAT  --to ${container_ip}:$container_port
     iptables -t nat -A OUTPUT -p tcp -o lo --dport $host_port -j DNAT --to-destination ${container_ip}:$container_port
+  fi
 }
 
 amb-start-consul() {
