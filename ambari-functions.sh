@@ -95,14 +95,20 @@ amb-start-agent() {
 }
 
 amb-publish-port() {
-  local port=${1:?"amb-publish-port <port> <des_ip>"}
-  local des_ip=${2:?"amb-publish-port <port> <des_ip>"}
-  firewall-cmd --zone=public --add-port=$port/tcp --permanent
+  local container_ip=${1:?"amb-publish-port <container_ip> <host_port> [<container_port>]"}
+  local host_port=${2:?"amb-publish-port <container_ip> <host_port> [<container_port>]"}
+  local container_port=$3
+
+  firewall-cmd --zone=public --add-port=$host_port/tcp --permanent
   firewall-cmd --reload
 
-  iptables -A PREROUTING -t nat -i eth0 -p tcp --dport $port -j DNAT  --to ${des_ip}:$port
-  iptables -t nat -A OUTPUT -p tcp -o lo --dport $port -j DNAT --to-destination ${des_ip}:$port
   # TODO: need to save, in case of firewall-cmd --reload lost the dnat rules
+  if [ -z $container_port ]; then
+    iptables -A PREROUTING -t nat -i eth0 -p tcp --dport $host_port -j DNAT  --to ${container_ip}:$host_port
+    iptables -t nat -A OUTPUT -p tcp -o lo --dport $host_port -j DNAT --to-destination ${container_ip}:$host_port
+  else
+    iptables -A PREROUTING -t nat -i eth0 -p tcp --dport $host_port -j DNAT  --to ${container_ip}:$container_port
+    iptables -t nat -A OUTPUT -p tcp -o lo --dport $host_port -j DNAT --to-destination ${container_ip}:$container_port
 }
 
 amb-start-consul() {
@@ -139,7 +145,7 @@ amb-start-ambari-server() {
   set-host-ip $AMBARI_SERVER_NAME $local_ip
 
   # publish ambari 8080 port
-  amb-publish-port 8080 $local_ip
+  amb-publish-port $local_ip 8080 
 
   # for etl server or kattle to copy file
   run-command docker exec $AMBARI_SERVER_NAME sh -c " echo Zasd_1234 | passwd root --stdin "
@@ -155,7 +161,7 @@ amb-start-mysql() {
 
   set-host-ip $MYSQL_SERVER_NAME $local_ip
 
-  amb-publish-port 3306 $local_ip
+  amb-publish-port $local_ip 3306 
   run-command consul-register-service $MYSQL_SERVER_NAME $local_ip
 }
 
@@ -472,7 +478,7 @@ _get-local-amb-node-name() {
 
 amb-publish-hadoop-port(){
   # /ips/amb1
-  local port=${1:?"Usage:amb-publish-port <port number>"}
+  local port=${1:?"Usage:amb-publish-hadoop-port <port number>"}
   local agent_list=$(_etcdctl ls /ips | egrep "amb[0-9]+" | awk -F / '{print $3}')
   local amb_stay_host=""
   local amb_stay_host_ip=""
@@ -495,7 +501,7 @@ amb-publish-hadoop-port(){
 
   _etcdctl set /hadoop/open_ports/$port "${amb_stay_host}-${amb_stay_host_ip}" 
 
-  pdsh -w $locate_host bash $SH_FILE_PATH/$0 amb-publish-port $port ${amb_stay_host_ip}
+  pdsh -w $locate_host bash $SH_FILE_PATH/$0 amb-publish-port ${amb_stay_host_ip} $port 
 }
 
 
@@ -508,8 +514,8 @@ amb-publish-ambari-server-ports(){
 
   # republish ambari 8080 port
   local mysql_ip=$(get-host-ip $MYSQL_SERVER_NAME)
-  amb-publish-port 8080 $(get-ambari-server-ip)
-  amb-publish-port 3306 $mysql_ip
+  amb-publish-port $(get-ambari-server-ip) 8080 
+  amb-publish-port $mysql_ip 3306 
 }
 
 amb-publish-hadoop-ports() {
