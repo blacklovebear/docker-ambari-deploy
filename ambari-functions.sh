@@ -102,6 +102,11 @@ amb-publish-port() {
   firewall-cmd --zone=public --add-port=$host_port/tcp --permanent
   firewall-cmd --reload
 
+  for i in $( iptables -t nat --line-numbers -L PREROUTING | grep $host_port | awk '{ print $1 }' | tac ); \
+    do iptables -t nat -D PREROUTING $i; done
+  for i in $( iptables -t nat --line-numbers -L OUTPUT | grep $host_port | awk '{ print $1 }' | tac ); \
+    do iptables -t nat -D OUTPUT $i; done
+
   # TODO: need to save, in case of firewall-cmd --reload lost the dnat rules
   if [ -z $container_port ]; then
     iptables -A PREROUTING -t nat -i eth0 -p tcp --dport $host_port -j DNAT  --to ${container_ip}:$host_port
@@ -110,6 +115,8 @@ amb-publish-port() {
     iptables -A PREROUTING -t nat -i eth0 -p tcp --dport $host_port -j DNAT  --to ${container_ip}:$container_port
     iptables -t nat -A OUTPUT -p tcp -o lo --dport $host_port -j DNAT --to-destination ${container_ip}:$container_port
   fi
+
+  iptables-save
 }
 
 amb-start-consul() {
