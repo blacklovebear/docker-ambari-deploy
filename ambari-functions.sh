@@ -99,8 +99,7 @@ amb-publish-port() {
   local host_port=${2:?"amb-publish-port <container_ip> <host_port> [<container_port>]"}
   local container_port=$3
 
-  firewall-cmd --zone=public --add-port=$host_port/tcp --permanent
-  firewall-cmd --reload
+  iptables -A INPUT -m state --state NEW -p tcp --dport $host_port -j ACCEPT
 
   for i in $( iptables -t nat --line-numbers -L PREROUTING | grep $host_port | awk '{ print $1 }' | tac ); \
     do iptables -t nat -D PREROUTING $i; done
@@ -116,7 +115,7 @@ amb-publish-port() {
     iptables -t nat -A OUTPUT -p tcp -o lo --dport $host_port -j DNAT --to-destination ${container_ip}:$container_port
   fi
 
-  iptables-save
+  service iptables save
 }
 
 amb-start-consul() {
@@ -516,9 +515,6 @@ amb-publish-hadoop-port(){
 amb-publish-ambari-server-ports(){
   local first_host=$(_get-first-host)
   _copy_this_sh
-
-  # clean all port dnat
-  pdsh -w $first_host firewall-cmd --reload
 
   # republish ambari 8080 port
   local mysql_ip=$(get-host-ip $MYSQL_SERVER_NAME)

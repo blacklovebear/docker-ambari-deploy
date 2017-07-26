@@ -48,10 +48,17 @@ _config-docker() {
     systemctl restart docker
 }
 
+_enable-iptables(){
+    systemctl disable firewalld
+    yum install -y iptables-services
+    systemctl enable iptables
+}
+
 _pre-host(){
     debug "Installing tools...................."
     # jq parse curl json
     yum install -y epel-release pdsh docker-io jq
+    _enable-iptables
     _config-docker
 }
 
@@ -82,6 +89,7 @@ pre-deploy() {
     _copy_this_sh
     pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _pre-host
 }
+
 
 _add-host-to-env-sh(){
     local host=$1
