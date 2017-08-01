@@ -20,6 +20,52 @@ _change-ip() {
     done
 }
 
+
+save-docker-images(){
+    # master only
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/master/amb-server.tar registry.cn-hangzhou.aliyuncs.com/tospur/amb-server:v2.4
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/master/mysql.tar registry.cn-hangzhou.aliyuncs.com/tospur/mysql:latest
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/master/httpd.tar registry.cn-hangzhou.aliyuncs.com/tospur/httpd:latest
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/master/consul.tar docker.io/sequenceiq/consul:v0.5.0-v6
+
+    # per node
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/agent/amb-agent.tar registry.cn-hangzhou.aliyuncs.com/tospur/amb-agent:v2.4
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/agent/busybox.tar docker.io/busybox:latest
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/agent/etcdctl.tar docker.io/tenstartups/etcdctl:latest
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/agent/curl.tar docker.io/appropriate/curl:latest
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/agent/calico-node.tar docker.io/calico/node:latest
+    docker save -o $HDP_PKG_DIR/IMAGES_TAR/base_images/agent/etcd.tar docker.io/twang2218/etcd:v2.3.7
+}
+
+
+
+_load-master-images(){
+    docker load -i $HDP_PKG_DIR/IMAGES_TAR/base_images/master/amb-server.tar
+    docker load -i $HDP_PKG_DIR/IMAGES_TAR/base_images/master/mysql.tar
+    docker load -i $HDP_PKG_DIR/IMAGES_TAR/base_images/master/httpd.tar
+    docker load -i $HDP_PKG_DIR/IMAGES_TAR/base_images/master/consul.tar
+}
+
+
+_load-agents-images(){
+    local host_list=${1:?"Usage: _load-agents-images <host_list>"}
+
+    local local_image_path=/tmp/base_images/agent
+
+    pdsh -w $host_list mkdir -p $local_image_path
+    pdsh -w $host_list rm -rf $local_image_path/*
+
+    pdcp -w $host_list $HDP_PKG_DIR/IMAGES_TAR/base_images/agent/* $local_image_path
+
+    pdsh -w $host_list docker load -i $local_image_path/amb-agent.tar
+    pdsh -w $host_list docker load -i $local_image_path/busybox.tar
+    pdsh -w $host_list docker load -i $local_image_path/etcdctl.tar
+    pdsh -w $host_list docker load -i $local_image_path/curl.tar
+    pdsh -w $host_list docker load -i $local_image_path/calico-node.tar
+    pdsh -w $host_list docker load -i $local_image_path/etcd.tar
+}
+
+
 _set-hostname() {
     hostnamectl set-hostname $1
 }
@@ -43,21 +89,35 @@ _config-docker() {
     "live-restore": true,
     "registry-mirrors": ["https://80kate9y.mirror.aliyuncs.com"]
 }' > /etc/docker/daemon.json
-    
+
     debug "Docker deamon restarting ............"
     systemctl restart docker
 }
 
 _enable-iptables(){
     systemctl disable firewalld
-    yum install -y iptables-services
     systemctl enable iptables
 }
 
-_pre-host(){
+_install-agents-software(){
+    local host_list=${1:?"Usage: _install-agents-software <host_list>"}
+    local local_software_path=/tmp/docker_deploy_software
+
+    pdsh -w $host_list mkdir -p $local_software_path
+    pdsh -w $host_list rm -rf $local_software_path/*
+    pdcp -w $host_list $HDP_PKG_DIR/ENV_TOOLS/* $local_software_path
+
+    pdsh -w $host_list yum localinstall $local_software_path/*
+}
+
+
+_install-master-software(){
+    # yum install -y epel-release sshpass pdsh docker-io jq iptables-services
+    yum localinstall $HDP_PKG_DIR/ENV_TOOLS/*
+}
+
+_config-per-host(){
     debug "Installing tools...................."
-    # jq parse curl json
-    yum install -y epel-release pdsh docker-io jq
     _enable-iptables
     _config-docker
 }
@@ -81,13 +141,21 @@ pre-deploy() {
         echo $HOST_LIST
         sed -i "s/HOST_LIST=\(.*\)/HOST_LIST=$HOST_LIST/g" $ENV_FILE
     fi
-    
-    # install on local server
-    yum install -y epel-release sshpass pdsh git
 
+    local rest_hosts=$(_get-2after-hosts)
+
+    # install on master server
+    # yum install -y sshpass pdsh
+    _install-master-software
     _hosts-ssh-passwd-less $passwd
+
     _copy_this_sh
-    pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _pre-host
+
+    pdsh -w $rest_hosts bash $SH_FILE_PATH/$0 _install-agents-software
+    pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _config-per-host
+
+    _load-master-images
+    _load-agents-images $rest_hosts
 }
 
 
@@ -104,12 +172,13 @@ add-new-host() {
     local host=${1:?"Usage: add-new-host <host> <passwd>"}
     local passwd=${2:?"sage: add-new-host <host> <passwd>"}
 
-    yum install -y epel-release sshpass pdsh git
-    _add-host-to-env-sh $host
 
+    _add-host-to-env-sh $host
     _host-ssh-passwd-less $host $passwd
     _copy_this_sh $host
-    pdsh -w $host bash $SH_FILE_PATH/$0 _pre-host 
+
+    pdsh -w $host bash $SH_FILE_PATH/$0 _install-agents-software
+    pdsh -w $host bash $SH_FILE_PATH/$0 _config-per-host
 }
 
 $@

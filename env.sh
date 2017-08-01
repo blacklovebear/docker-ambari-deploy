@@ -51,6 +51,10 @@ _get-third-host() {
     cut -d',' -f 3 <<< $HOST_LIST
 }
 
+_get-2after-hosts() {
+    cut -d',' -f 2- <<< $HOST_LIST
+}
+
 _get-first-host-ip() {
     _get-host-ip $(_get-first-host)
 }
