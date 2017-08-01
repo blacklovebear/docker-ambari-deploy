@@ -25,7 +25,7 @@ HOST_LIST=dc01,dc02,dc03,dc04,dc05
 
 
 _local_open-port(){
-    local host_port=${2:?"_local_open-port <host_port>"}
+    local host_port=${1:?"_local_open-port <host_port>"}
 
     for i in $( iptables -nvL INPUT --line-numbers | grep $host_port | awk '{ print $1 }' | tac ); \
         do iptables -D INPUT $i; done
