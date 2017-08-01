@@ -23,6 +23,16 @@ AMBARI_v2_5_PATH=AMBARI-2.5.0.3/centos7
 
 HOST_LIST=dc01,dc02,dc03,dc04,dc05
 
+
+_local_open-port(){
+    local host_port=${2:?"_local_open-port <host_port>"}
+
+    for i in $( iptables -nvL INPUT --line-numbers | grep $host_port | awk '{ print $1 }' | tac ); \
+        do iptables -D INPUT $i; done
+    iptables -A INPUT -m state --state NEW -p tcp --dport $host_port -j ACCEPT
+    service iptables save
+}
+
 _copy_this_sh() {
     local host=$1
     if [[ "" == $host ]];then

@@ -15,7 +15,7 @@ add-google-to-host(){
     if ! cat /etc/hosts | grep google;then
         cat << EOF >> /etc/hosts
 61.91.161.217 google.com
-61.91.161.217 gcr.io   
+61.91.161.217 gcr.io
 61.91.161.217 www.gcr.io
 61.91.161.217 console.cloud.google.com
 61.91.161.217 storage.googleapis.com
@@ -160,7 +160,7 @@ conf-kubernetes-nodes(){
 conf-flanneld() {
     local config_path=/etc/sysconfig/flanneld
     cat << EOF > $config_path
-# Flanneld configuration options  
+# Flanneld configuration options
 
 # etcd url location.  Point this to the server where etcd runs
 FLANNEL_ETCD_ENDPOINTS="http://${MASTER_IP}:2379"
@@ -221,6 +221,9 @@ EOF
 open-kubelet-ports(){
     local master_host=$(get-master-host)
     # etcd
+
+    需要改成 iptables 形式
+
     pdsh -w $master_host firewall-cmd --zone=public --add-port=2379/tcp --permanent
     # kube-apiserver
     pdsh -w $master_host firewall-cmd --zone=public --add-port=6443/tcp --permanent
@@ -239,7 +242,7 @@ conf-flanneld-on-etcd(){
 
 start-master(){
     local master_host=$(get-master-host)
-    
+
     _copy_this_sh $master_host
 
     pdsh -w $master_host "sed -i 's/User=.*/User=root/g' /usr/lib/systemd/system/kube-controller-manager.service"
@@ -325,7 +328,7 @@ main(){
     add-google-to-host
 
     install-k8s
-    
+
     conf-kubernetes-common
 
     conf-kubernetes-master
@@ -341,7 +344,7 @@ main(){
     start-master
 
     start-nodes
-    
+
 }
 
 $@

@@ -7,9 +7,13 @@ export ETCD_ENDPOINTS=$(_get-etcd-ip-list http)
 
 etcd-open-ports() {
     local etcd_host_list=$(_get-etcd-host-list)
-    pdsh -w $etcd_host_list firewall-cmd --zone=public --add-port=2380/tcp --permanent
-    pdsh -w $etcd_host_list firewall-cmd --zone=public --add-port=2379/tcp --permanent
-    pdsh -w $etcd_host_list firewall-cmd --reload
+    pdsh -w $etcd_host_list bash $SH_FILE_PATH/$0 _open-etcd-ports
+
+}
+
+_open-etcd-ports(){
+    _local_open-port 2380
+    _local_open-port 2379
 }
 
 _stop-etcd-progress() {
@@ -114,8 +118,7 @@ _local_calico_start() {
     local host_ip=${2:?"Usage:_local_calico_start <etcd_cluster> <host_ip> "}
 
     # open port:179 for BPG protocol (calico use for node communication)
-    firewall-cmd --zone=public --add-port=179/tcp --permanent
-    firewall-cmd --reload
+    _local_open-port 179
 
     chmod +x /usr/local/bin/calicoctl
     # 默认的name 和hostName 一致，如果两台机器的hostName一致，则必须指定，不然bgp发现不了远端
@@ -132,7 +135,7 @@ calico-start() {
     # copy calicoctl
     pdcp -w $HOST_LIST ./calicoctl /usr/local/bin/calicoctl
     _copy_this_sh
-    
+
     for host in ${HOST_LIST//,/ }; do
         local host_ip=$(_get-host-ip $host)
         pdsh -w $host bash $SH_FILE_PATH/$0 _local_calico_start $etcd_cluster $host_ip
@@ -237,7 +240,7 @@ add-new-host(){
     _copy_this_sh
     # copy calicoctl
     pdcp -w $host ./calicoctl /usr/local/bin/calicoctl
-    
+
     pdsh -w $host bash $SH_FILE_PATH/$0 _local-add-new-host $host_ip $etcd_cluster_docker $etcd_cluster
 
 }

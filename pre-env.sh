@@ -161,7 +161,7 @@ pre-deploy() {
     pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _config-per-host
 
     _load-master-images
-    _load-agents-images $rest_hosts
+    _load-agents-images $HOST_LIST
 }
 
 
