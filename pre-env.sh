@@ -105,15 +105,20 @@ _install-agents-software(){
 
     pdsh -w $host_list mkdir -p $local_software_path
     pdsh -w $host_list rm -rf $local_software_path/*
-    pdcp -w $host_list $HDP_PKG_DIR/ENV_TOOLS/* $local_software_path
 
-    pdsh -w $host_list yum localinstall $local_software_path/*
+    for host in ${host_list//,/ }; do
+        scp $HDP_PKG_DIR/ENV_TOOLS/* ${host}:$local_software_path
+    done
+
+    # pdcp -w $host_list $HDP_PKG_DIR/ENV_TOOLS/* $local_software_path
+
+    pdsh -w $host_list yum localinstall -y $local_software_path/*
 }
 
 
 _install-master-software(){
     # yum install -y epel-release sshpass pdsh docker-io jq iptables-services
-    yum localinstall $HDP_PKG_DIR/ENV_TOOLS/*
+    yum localinstall -y $HDP_PKG_DIR/ENV_TOOLS/*
 }
 
 _config-per-host(){
@@ -149,9 +154,10 @@ pre-deploy() {
     _install-master-software
     _hosts-ssh-passwd-less $passwd
 
+    _install-agents-software $rest_hosts
+
     _copy_this_sh
 
-    pdsh -w $rest_hosts bash $SH_FILE_PATH/$0 _install-agents-software
     pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _config-per-host
 
     _load-master-images
