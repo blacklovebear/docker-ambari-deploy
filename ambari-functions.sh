@@ -99,13 +99,13 @@ amb-publish-port() {
   local host_port=${2:?"amb-publish-port <container_ip> <host_port> [<container_port>]"}
   local container_port=$3
 
-  for i in $( iptables -nL INPUT --line-numbers | grep $host_port | awk '{ print $1 }' | tac ); \
+  for i in $( iptables -nvL INPUT --line-numbers | grep $host_port | awk '{ print $1 }' | tac ); \
     do iptables -D INPUT $i; done
   iptables -A INPUT -m state --state NEW -p tcp --dport $host_port -j ACCEPT
   
-  for i in $( iptables -t nat --line-numbers -L PREROUTING | grep $host_port | awk '{ print $1 }' | tac ); \
+  for i in $( iptables -t nat --line-numbers -nvL PREROUTING | grep $host_port | awk '{ print $1 }' | tac ); \
     do iptables -t nat -D PREROUTING $i; done
-  for i in $( iptables -t nat --line-numbers -L OUTPUT | grep $host_port | awk '{ print $1 }' | tac ); \
+  for i in $( iptables -t nat --line-numbers -nvL OUTPUT | grep $host_port | awk '{ print $1 }' | tac ); \
     do iptables -t nat -D OUTPUT $i; done
 
   if [ -z $container_port ]; then
