@@ -48,13 +48,13 @@ amb-clean() {
 
 _amb_run_shell() {
   local commnd=${1:?"Usage: _amb_run_shell <commnd>"}
-  local blueprint=${2:?"Usage: _amb_run_shell <commnd> <blueprint> 
+  local blueprint=${2:?"Usage: _amb_run_shell <commnd> <blueprint>
                     blueprint: (single-node-hdfs-yarn / multi-node-hdfs-yarn / hdp-singlenode-default / hdp-multinode-default)"}
 
   local ambari_server_image="registry.cn-hangzhou.aliyuncs.com/tospur/amb-server:$AMBARI_VERSION"
   local agent_nums=$(_etcdctl get /agent-nums)
   local ambari_host=$(get-ambari-server-ip)
-  
+
   run-command docker run --net $CALICO_NET -it --rm -e EXPECTED_HOST_COUNT=$agent_nums -e BLUEPRINT=$blueprint -e AMBARI_HOST=$ambari_host \
      --entrypoint /bin/sh $ambari_server_image -c $commnd
 }
@@ -102,7 +102,7 @@ amb-publish-port() {
   for i in $( iptables -nvL INPUT --line-numbers | grep $host_port | awk '{ print $1 }' | tac ); \
     do iptables -D INPUT $i; done
   iptables -A INPUT -m state --state NEW -p tcp --dport $host_port -j ACCEPT
-  
+
   for i in $( iptables -t nat --line-numbers -nvL PREROUTING | grep $host_port | awk '{ print $1 }' | tac ); \
     do iptables -t nat -D PREROUTING $i; done
   for i in $( iptables -t nat --line-numbers -nvL OUTPUT | grep $host_port | awk '{ print $1 }' | tac ); \
@@ -148,12 +148,12 @@ amb-start-ambari-server() {
               --dns $consul_ip  --dns-search service.consul \
               -e MYSQL_DB=mysql.service.consul -e NAMESERVER_ADDR=$consul_ip \
               -v $HADOOP_LOG/$AMBARI_SERVER_NAME:/var/log \
-              -h $AMBARI_SERVER_NAME.service.consul $ambari_server_image 
+              -h $AMBARI_SERVER_NAME.service.consul $ambari_server_image
 
   set-host-ip $AMBARI_SERVER_NAME $local_ip
 
   # publish ambari 8080 port
-  amb-publish-port $local_ip 8080 
+  amb-publish-port $local_ip 8080
 
   # for etl server or kattle to copy file
   run-command docker exec $AMBARI_SERVER_NAME sh -c " echo Zasd_1234 | passwd root --stdin "
@@ -169,7 +169,7 @@ amb-start-mysql() {
 
   set-host-ip $MYSQL_SERVER_NAME $local_ip
 
-  amb-publish-port $local_ip 3306 
+  amb-publish-port $local_ip 3306
   run-command consul-register-service $MYSQL_SERVER_NAME $local_ip
 }
 
@@ -223,6 +223,9 @@ _amb-start-node-service() {
   # set password to agent, for server ssh
   docker exec $node_name sh -c " echo Zasd_1234 | passwd root --stdin "
   docker exec $node_name sh -c " systemctl restart ntpd "
+
+  # yum  One of the configured repositories failed (Unknown)
+  docker exec $node_name sh -c " yum remove -y epel-release "
 }
 
 amb-start-HDP-httpd() {
@@ -408,7 +411,7 @@ amb-start-cluster() {
 
   debug "test ambari started "
   amb-test-amb-server-start
-  
+
   debug "print Ambari config settings"
   amb-tool-get-all-setting
 }
@@ -434,7 +437,7 @@ amb-clean-etcd() {
 
   local agent_list=$(_etcdctl ls /ips | egrep "amb[0-9]+")
   for i in $agent_list; do
-    _etcdctl rm $i 
+    _etcdctl rm $i
   done
 }
 
@@ -507,9 +510,9 @@ amb-publish-hadoop-port(){
   local locate_host=$(amb-get-agent-stay-host ${amb_stay_host: -1})
   echo "located host: $locate_host"
 
-  _etcdctl set /hadoop/open_ports/$port "${amb_stay_host}-${amb_stay_host_ip}" 
+  _etcdctl set /hadoop/open_ports/$port "${amb_stay_host}-${amb_stay_host_ip}"
 
-  pdsh -w $locate_host bash $SH_FILE_PATH/$0 amb-publish-port ${amb_stay_host_ip} $port 
+  pdsh -w $locate_host bash $SH_FILE_PATH/$0 amb-publish-port ${amb_stay_host_ip} $port
 }
 
 
@@ -519,8 +522,8 @@ amb-publish-ambari-server-ports(){
 
   # republish ambari 8080 port
   local mysql_ip=$(get-host-ip $MYSQL_SERVER_NAME)
-  amb-publish-port $(get-ambari-server-ip) 8080 
-  amb-publish-port $mysql_ip 3306 
+  amb-publish-port $(get-ambari-server-ip) 8080
+  amb-publish-port $mysql_ip 3306
 }
 
 amb-publish-hadoop-ports() {
