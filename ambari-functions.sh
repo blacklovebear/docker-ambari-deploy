@@ -416,6 +416,36 @@ amb-start-cluster() {
   amb-tool-get-all-setting
 }
 
+# Java API start cluster
+java-api-start-cluster() {
+  local agents_per_host=1
+  local first_host=$(_get-first-host)
+
+  # no check input use variable in env.sh
+  # _check-input
+
+  debug "First clean cluster ......"
+  amb-clean-cluster
+
+  debug "Now starting the cluster ......"
+  _copy_this_sh
+
+  amb-start-server
+  sleep $SLEEP_TIME
+  for host in ${HOST_LIST//,/ }; do
+    pdsh -w $host bash $SH_FILE_PATH/$0 amb-start-agent $agents_per_host
+  done
+
+  sleep $SLEEP_TIME
+  _amb-start-services-after-server-started
+
+  debug "test ambari started "
+  amb-test-amb-server-start
+
+  debug "print Ambari config settings"
+  amb-tool-get-all-setting
+}
+
 amb-deploy-cluster() {
   _amb_run_shell /tmp/install-cluster.sh multi-node-hdfs-yarn
 }
