@@ -3,6 +3,8 @@
 # import common variable
 source $(dirname $0)/env.sh
 
+CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+
 _change-ip() {
     local GATEWAY=${1:?"Usage:change-ip <GATEWAY> <IPADDR>"}
     local IPADDR=${2:?"Usage:change-ip <GATEWAY> <IPADDR>"}
@@ -137,8 +139,7 @@ pre-network() {
     systemctl restart network
 }
 
-pre-deploy() {
-    local passwd=${1:?"Usage: pre-deploy <host-passwd>"}
+_check-input(){
     read -p "Please input host list comma as segmentation default:[$HOST_LIST] input:" INPUT
 
     if [[ "$INPUT" != "" ]];then
@@ -146,6 +147,11 @@ pre-deploy() {
         echo $HOST_LIST
         sed -i "s/HOST_LIST=\(.*\)/HOST_LIST=$HOST_LIST/g" $ENV_FILE
     fi
+}
+
+pre-deploy() {
+    local passwd=${1:?"Usage: pre-deploy <host-passwd>"}
+    # _check-input
 
     local rest_hosts=$(_get-2after-hosts)
 
@@ -158,7 +164,7 @@ pre-deploy() {
 
     _copy_this_sh
 
-    pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _config-per-host
+    pdsh -w $HOST_LIST bash $CURRENT_EXE_FILE _config-per-host
 
     _load-master-images
     _load-agents-images $HOST_LIST
@@ -183,8 +189,8 @@ add-new-host() {
     _host-ssh-passwd-less $host $passwd
     _copy_this_sh $host
 
-    pdsh -w $host bash $SH_FILE_PATH/$0 _install-agents-software
-    pdsh -w $host bash $SH_FILE_PATH/$0 _config-per-host
+    pdsh -w $host bash $CURRENT_EXE_FILE _install-agents-software
+    pdsh -w $host bash $CURRENT_EXE_FILE _config-per-host
 }
 
 $@

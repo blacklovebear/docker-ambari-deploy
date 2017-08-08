@@ -3,6 +3,8 @@
 # import common variable
 source $(dirname $0)/env.sh
 
+CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+
 : ${AMBARI_SERVER_NAME:=${NODE_PREFIX}-server}
 : ${HTTPD_IMAGE:="registry.cn-hangzhou.aliyuncs.com/tospur/httpd:latest"}
 : ${HTTPD_NAME:=httpd}
@@ -403,7 +405,7 @@ amb-start-cluster() {
   amb-start-server
   sleep $SLEEP_TIME
   for host in ${HOST_LIST//,/ }; do
-    pdsh -w $host bash $SH_FILE_PATH/$0 amb-start-agent $agents_per_host
+    pdsh -w $host bash $CURRENT_EXE_FILE amb-start-agent $agents_per_host
   done
 
   sleep $SLEEP_TIME
@@ -433,7 +435,7 @@ java-api-start-cluster() {
   amb-start-server
   sleep $SLEEP_TIME
   for host in ${HOST_LIST//,/ }; do
-    pdsh -w $host bash $SH_FILE_PATH/$0 amb-start-agent $agents_per_host
+    pdsh -w $host bash $CURRENT_EXE_FILE amb-start-agent $agents_per_host
   done
 
   sleep $SLEEP_TIME
@@ -478,10 +480,10 @@ amb-clean-cluster() {
   for host in ${HOST_LIST//,/ }
   do
     if [ $count -eq 0 ];then
-      pdsh -w $host bash $SH_FILE_PATH/$0 amb-clean-server
+      pdsh -w $host bash $CURRENT_EXE_FILE amb-clean-server
     fi
 
-    pdsh -w $host bash $SH_FILE_PATH/$0 amb-clean-agent
+    pdsh -w $host bash $CURRENT_EXE_FILE amb-clean-agent
     ((count+=1))
   done
 }
@@ -542,7 +544,7 @@ amb-publish-hadoop-port(){
 
   _etcdctl set /hadoop/open_ports/$port "${amb_stay_host}-${amb_stay_host_ip}"
 
-  pdsh -w $locate_host bash $SH_FILE_PATH/$0 amb-publish-port ${amb_stay_host_ip} $port
+  pdsh -w $locate_host bash $CURRENT_EXE_FILE amb-publish-port ${amb_stay_host_ip} $port
 }
 
 
@@ -601,7 +603,7 @@ amb-add-new-agent(){
   local first_host=$(_get-first-host)
   _copy_this_sh $host
 
-  pdsh -w $host bash $SH_FILE_PATH/$0 amb-start-agent $agent_num
+  pdsh -w $host bash $CURRENT_EXE_FILE amb-start-agent $agent_num
   _amb-server-to-agents-passwdless
 }
 

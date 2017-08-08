@@ -1,6 +1,8 @@
 #!/bin/bash
 source $(dirname $0)/k8s-env.sh
 
+CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+
 : ${MASTER_IP:=""}
 
 get-master-host(){
@@ -248,22 +250,22 @@ start-master(){
     pdsh -w $master_host "sed -i 's/User=.*/User=root/g' /usr/lib/systemd/system/kube-controller-manager.service"
     pdsh -w $master_host "sed -i 's/User=.*/User=root/g' /usr/lib/systemd/system/kube-scheduler.service"
 
-    pdsh -w $master_host bash $SH_FILE_PATH/$0 _local_start_master
+    pdsh -w $master_host bash $CURRENT_EXE_FILE _local_start_master
 }
 
 start-nodes(){
     # local nodes_host=$(get-nodes-host)
     _copy_this_sh
-    pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _local_start_nodes
+    pdsh -w $HOST_LIST bash $CURRENT_EXE_FILE _local_start_nodes
 }
 
 stop-all(){
     local master_host=$(get-master-host)
     _copy_this_sh
 
-    pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _local_stop_nodes
+    pdsh -w $HOST_LIST bash $CURRENT_EXE_FILE _local_stop_nodes
 
-    pdsh -w $master_host bash $SH_FILE_PATH/$0 _local_stop_master
+    pdsh -w $master_host bash $CURRENT_EXE_FILE _local_stop_master
 }
 
 _local_start_master(){

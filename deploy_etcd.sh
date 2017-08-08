@@ -5,9 +5,11 @@ source $(dirname $0)/env.sh
 
 export ETCD_ENDPOINTS=$(_get-etcd-ip-list http)
 
+CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+
 etcd-open-ports() {
     local etcd_host_list=$(_get-etcd-host-list)
-    pdsh -w $etcd_host_list bash $SH_FILE_PATH/$0 _open-etcd-ports
+    pdsh -w $etcd_host_list bash $CURRENT_EXE_FILE _open-etcd-ports
 
 }
 
@@ -97,7 +99,7 @@ _three-etcd-docker-start(){
 config-docker-daemon-with-etcd() {
     _copy_this_sh
     local etcd_cluster=$(_get-etcd-ip-list etcd)
-    pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _local-config-docker $etcd_cluster
+    pdsh -w $HOST_LIST bash $CURRENT_EXE_FILE _local-config-docker $etcd_cluster
 }
 
 _local-config-docker() {
@@ -138,7 +140,7 @@ calico-start() {
 
     for host in ${HOST_LIST//,/ }; do
         local host_ip=$(_get-host-ip $host)
-        pdsh -w $host bash $SH_FILE_PATH/$0 _local_calico_start $etcd_cluster $host_ip
+        pdsh -w $host bash $CURRENT_EXE_FILE _local_calico_start $etcd_cluster $host_ip
     done
     sleep 5
     pdsh -w $(_get-first-host) calicoctl node status
@@ -228,7 +230,7 @@ _local-stop-containers() {
 }
 
 stop-containers() {
-    pdsh -w $HOST_LIST bash $SH_FILE_PATH/$0 _local-stop-containers
+    pdsh -w $HOST_LIST bash $CURRENT_EXE_FILE _local-stop-containers
 }
 
 add-new-host(){
@@ -241,7 +243,7 @@ add-new-host(){
     # copy calicoctl
     pdcp -w $host ./calicoctl /usr/local/bin/calicoctl
 
-    pdsh -w $host bash $SH_FILE_PATH/$0 _local-add-new-host $host_ip $etcd_cluster_docker $etcd_cluster
+    pdsh -w $host bash $CURRENT_EXE_FILE _local-add-new-host $host_ip $etcd_cluster_docker $etcd_cluster
 
 }
 
