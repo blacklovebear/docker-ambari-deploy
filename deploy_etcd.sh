@@ -5,7 +5,7 @@ source $(dirname $0)/env.sh
 
 export ETCD_ENDPOINTS=$(_get-etcd-ip-list http)
 
-CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+CURRENT_EXE_FILE=$SH_FILE_PATH/${0##*/}
 
 etcd-open-ports() {
     local etcd_host_list=$(_get-etcd-host-list)

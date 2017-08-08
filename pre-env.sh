@@ -3,7 +3,7 @@
 # import common variable
 source $(dirname $0)/env.sh
 
-CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+CURRENT_EXE_FILE=$SH_FILE_PATH/${0##*/}
 
 _change-ip() {
     local GATEWAY=${1:?"Usage:change-ip <GATEWAY> <IPADDR>"}

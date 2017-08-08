@@ -1,7 +1,7 @@
 #!/bin/bash
 source $(dirname $0)/k8s-env.sh
 
-CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+CURRENT_EXE_FILE=$SH_FILE_PATH/${0##*/}
 
 : ${MASTER_IP:=""}
 

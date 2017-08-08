@@ -3,7 +3,7 @@
 # import common variable
 source $(dirname $0)/env.sh
 
-CURRENT_EXE_FILE=$($SH_FILE_PATH/${0##*/})
+CURRENT_EXE_FILE=$SH_FILE_PATH/${0##*/}
 
 : ${AMBARI_SERVER_NAME:=${NODE_PREFIX}-server}
 : ${HTTPD_IMAGE:="registry.cn-hangzhou.aliyuncs.com/tospur/httpd:latest"}
